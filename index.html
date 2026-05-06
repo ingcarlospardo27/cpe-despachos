@@ -177,15 +177,15 @@ table.dt tr:last-child td{border:none}
   <div id="tab-res" class="screen on">
     <div class="fbar">
       <div class="fg"><label>Departamento</label>
-        <select id="r-dep" onchange="cascade('r');drawRes()"><option value="">Todos</option></select></div>
+        <select id="r-dep" onchange="smartCascade('r');drawRes()"><option value="">Todos</option></select></div>
       <div class="fg"><label>Municipio</label>
-        <select id="r-mun" onchange="drawRes()"><option value="">Todos</option></select></div>
+        <select id="r-mun" onchange="smartCascade('r');drawRes()"><option value="">Todos</option></select></div>
       <div class="fg"><label>Ubicación</label>
-        <select id="r-ubi" onchange="drawRes()"><option value="">Todas</option><option value="R">Rural</option><option value="U">Urbano</option></select></div>
+        <select id="r-ubi" onchange="smartCascade('r');drawRes()"><option value="">Todas</option><option value="R">Rural</option><option value="U">Urbano</option></select></div>
       <div class="fg"><label>Zona</label>
-        <select id="r-zon" onchange="drawRes()"><option value="">Todas</option><option value="0">Fácil</option><option value="1">Medio</option><option value="2">Especial</option></select></div>
+        <select id="r-zon" onchange="smartCascade('r');drawRes()"><option value="">Todas</option><option value="0">Fácil</option><option value="1">Medio</option><option value="2">Especial</option></select></div>
       <div class="fg"><label>Proyecto</label>
-        <select id="r-cat" onchange="drawRes()"><option value="">Todos</option><option value="1">Dot. Tec. Paz</option><option value="2">Bolsa Mintic</option><option value="3">Convocatoria</option><option value="4">Convenio</option></select></div>
+        <select id="r-cat" onchange="smartCascade('r');drawRes()"><option value="">Todos</option><option value="1">Dot. Tec. Paz</option><option value="2">Bolsa Mintic</option><option value="3">Convocatoria</option><option value="4">Convenio</option></select></div>
       <button class="btn-r" onclick="clearF('r');drawRes()">✕ Limpiar</button>
     </div>
 
@@ -253,7 +253,7 @@ table.dt tr:last-child td{border:none}
       <div class="fg"><label>Proyecto</label>
         <select id="e-cat" onchange="smartCascade('e');drawEq()"><option value="">Todos</option><option value="1">Dot. Tec. Paz</option><option value="2">Bolsa Mintic</option><option value="3">Convocatoria</option><option value="4">Convenio</option></select></div>
       <div class="fg"><label>Ubicación</label>
-        <select id="e-ubi" onchange="smartCascade('e');drawEq()"><option value="">Todas</option><option value="1">Rural</option><option value="0">Urbano</option></select></div>
+        <select id="e-ubi" onchange="smartCascade('e');drawEq()"><option value="">Todas</option><option value="R">Rural</option><option value="U">Urbano</option></select></div>
       <div class="fg"><label>Zona</label>
         <select id="e-zon" onchange="smartCascade('e');drawEq()"><option value="">Todas</option><option value="0">Fácil</option><option value="1">Medio</option><option value="2">Especial</option></select></div>
       <div class="fg"><label>Envío</label>
@@ -304,7 +304,7 @@ table.dt tr:last-child td{border:none}
       <div class="fg"><label>Proyecto</label>
         <select id="l-cat" onchange="smartCascade('l');drawLab()"><option value="">Todos</option><option value="1">Dot. Tec. Paz</option><option value="2">Bolsa Mintic</option><option value="3">Convocatoria</option><option value="4">Convenio</option></select></div>
       <div class="fg"><label>Ubicación</label>
-        <select id="l-ubi" onchange="smartCascade('l');drawLab()"><option value="">Todas</option><option value="1">Rural</option><option value="0">Urbano</option></select></div>
+        <select id="l-ubi" onchange="smartCascade('l');drawLab()"><option value="">Todas</option><option value="R">Rural</option><option value="U">Urbano</option></select></div>
       <div class="fg"><label>Zona</label>
         <select id="l-zon" onchange="smartCascade('l');drawLab()"><option value="">Todas</option><option value="0">Fácil</option><option value="1">Medio</option><option value="2">Especial</option></select></div>
       <button class="btn-r" onclick="clearF('l');drawLab()">✕ Limpiar</button>
@@ -477,6 +477,7 @@ function restoreFilters(p){
       opts.forEach(([v,t])=>{const o=document.createElement('option');o.value=v;o.textContent=t;sel.appendChild(o);});
     });
   }
+  // For General tab ('r'), no extra selects to restore
 }
 function clearOC(){['oc-f-n','oc-f-m','oc-f-dep','oc-f-mun'].forEach(id=>{const e=document.getElementById(id);if(e)e.value='';});const s=document.getElementById('oc-f-mun');if(s)s.innerHTML='<option value="">Todos</option>';const si=document.getElementById('oc-f-sed');if(si)si.value='';}
 function set(id,h){const e=document.getElementById(id);if(e)e.innerHTML=h;}
@@ -534,14 +535,21 @@ function cascade(p){
   smartCascade(p);
 }
 
+let _cascading=false;
 function smartCascade(p){
-  const arr=p==='l'?getLAB():getEQ();
+  if(_cascading) return;  // prevent recursive onchange triggers
+  _cascading=true;
+  try{ _doSmartCascade(p); } finally{ _cascading=false; }
+}
+function _doSmartCascade(p){
+  const arr=(p==='l'||(p==='r'&&rsMode==='lab'))?getLAB():getEQ();
   
   // Get current filter values
   const dep=gv(p+'-dep'), mun=gv(p+'-mun'), est=gv(p+'-est'), cat=gv(p+'-cat');
   const ubi=gv(p+'-ubi'), zon=gv(p+'-zon');
   const tr=p==='e'?gv('e-tr'):'', sd=p==='e'?gv('e-sd'):'';
   const sed=(document.getElementById(p+'-sed')||{value:''}).value.trim().toLowerCase();
+  const isRes=p==='r';
 
   // Helper: apply all filters EXCEPT one field
   function filtered(except){
@@ -556,7 +564,7 @@ function smartCascade(p){
       if(except!=='tr' && tr!=='') d=d.filter(r=>r.p===+tr);
       if(except!=='sd' && sd!=='') d=d.filter(r=>r.s===+sd);
     }
-    if(sed) d=d.filter(r=>r.i.toLowerCase().includes(sed));
+    if(sed && !isRes) d=d.filter(r=>r.i.toLowerCase().includes(sed));
     return d;
   }
 
@@ -626,7 +634,7 @@ function smartCascade(p){
     if(zonSel.querySelector(`option[value="${cur}"]`)) zonSel.value=cur;
   }
 
-  // EQ-only: envio y sede/directa
+  // EQ-only: envio y sede/directa (not for General tab 'r')
   if(p==='e'){
     const trSel=document.getElementById('e-tr');
     if(trSel){
@@ -667,9 +675,10 @@ function fEqRes(){
 }
 function fLabRes(){
   let d=applyGlobal(getLAB());
-  const dep=gv('r-dep'),mun=gv('r-mun'),ubi=gv('r-ubi'),cat=gv('r-cat');
+  const dep=gv('r-dep'),mun=gv('r-mun'),ubi=gv('r-ubi'),zon=gv('r-zon'),cat=gv('r-cat');
   if(dep)d=d.filter(r=>r.d===dep);if(mun)d=d.filter(r=>r.m===mun);
-  if(ubi)d=d.filter(r=>r.u===ubi);if(cat)d=d.filter(r=>r.c===+cat);return d;
+  if(ubi)d=d.filter(r=>r.u===ubi);if(zon!=='')d=d.filter(r=>r.z.startsWith(ZON[+zon].slice(0,2)));
+  if(cat)d=d.filter(r=>r.c===+cat);return d;
 }
 function fEqTab(){
   let d=applyGlobal(getEQ());
@@ -733,6 +742,8 @@ function drawRes(){
       <div class="proj-vals" style="color:${CAT_C[ci]}">${N(eq)}</div><div class="proj-pct">${pct(eq,tot)}%</div>
       <button onclick="xCat('eq',${ci})" style="padding:2px 7px;font-size:10px;border-radius:4px;background:var(--bl);color:#fff;border:none;cursor:pointer;flex-shrink:0;margin-left:4px">⬇</button></div>`;
   }).join(''));
+  // If lab view is active in General, redraw it too
+  if(rsMode==='lab') drawResLab();
 }
 function drawResLab(){
   const data=fLabRes();const tot=data.length,ent=data.filter(r=>r.e===1).length,dis=data.filter(r=>r.e===0).length;
