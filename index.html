@@ -361,21 +361,17 @@ table.dt tr:last-child td{border:none}
       <div class="tw"><table class="exec-table" id="oc-exec-tbl"></table></div>
     </div>
 
-    <!-- OC por Marca (invertido) -->
-    <div class="card" style="margin-bottom:12px">
-      <div class="ch"><h3>🏷️ Orden de Compra → Marca · equipos y sedes</h3>
-        <button class="btn-x" onclick="xOCporMarca()">⬇ Excel</button></div>
-      <div class="tw"><table class="dt" id="oc-por-marca"></table></div>
-    </div>
-
     <!-- Combinatorias -->
     <div class="card" style="margin-bottom:12px">
-      <div class="ch"><h3>🔀 Combinatorias de marcas por sede</h3>
-        <button class="btn-x" onclick="xCombos()">⬇ Excel</button></div>
-      <div class="tw"><table class="dt" id="oc-combos"></table></div>
+      <div class="ch">
+        <div>
+          <h3>🔀 Combinatorias de marcas por sede</h3>
+          <div style="font-size:11px;color:var(--mu);margin-top:3px" id="oc-combo-info"></div>
+        </div>
+        <button class="btn-x" onclick="xCombos()">⬇ Descargar Excel</button>
+      </div>
     </div>
-
-    <!-- Detalle sedes -->
+        <!-- Detalle sedes -->
     <div class="card">
       <div class="ch">
         <h3>🏫 Detalle de sedes</h3>
@@ -659,8 +655,8 @@ function drawOCAll(){
   const info=proj?`${N(data.length)} sedes · ${N(data.reduce((a,s)=>a+s.total,0))} equipos`:'';
   set('oc-proj-info',info);
   drawExecTable(data);
-  drawOCporMarcaTable(data);
-  drawCombosTable(data);
+  const comboSet=new Set(data.map(s=>Object.keys(s.marcas||{}).sort().join(' + ')));
+  set('oc-combo-info',`${comboSet.size} combinaciones distintas en ${N(data.length)} sedes — descarga el Excel para ver el detalle`);
   drawOCSedes();
 }
 
@@ -885,11 +881,14 @@ function xOCporMarca(){
   xlsx([['Orden de Compra','Marca','Sedes','Equipos'],...rows],'OC_por_Marca');
 }
 function xCombos(){
-  const data=getOCData();const comboAgg={};
-  data.forEach(s=>{const k=Object.keys(s.marcas||{}).sort().join(' + ');if(!comboAgg[k])comboAgg[k]={combo:k,sedes:0,equipos:0};comboAgg[k].sedes++;comboAgg[k].equipos+=s.total;});
-  const total=data.length,totalEq=data.reduce((a,s)=>a+s.total,0);
-  const rows=Object.values(comboAgg).sort((a,b)=>b.sedes-a.sedes).map(r=>[r.combo,r.sedes,pct1(r.sedes,total)+'%',r.equipos,pct1(r.equipos,totalEq)+'%']);
-  xlsx([['Combinación','Sedes','% Sedes','Equipos','% Equipos'],...rows],'Combinatorias_Marcas');
+  const data=getOCData();
+  const CAT_FULL={Dot:'Dot. Tec. Paz',Bol:'Bolsa Mintic',Con:'Convocatoria',Cov:'Convenio'};
+  const rows=data.map(s=>{
+    const combo=Object.keys(s.marcas||{}).sort().join(' + ');
+    return[combo,CAT_FULL[s.cat]||s.cat||'',s.dane,s.rad,s.sede,s.dep,s.mun,s.n_oc,
+      s.marcas?.Compumax||0,s.marcas?.Lenovo||0,s.marcas?.HP||0,s.marcas?.Asus||0,s.total];
+  }).sort((a,b)=>a[0].localeCompare(b[0]));
+  xlsx([['Combinación de Marcas','Proyecto','DANE','Radicado','Institución','Departamento','Municipio','# OC','Compumax','Lenovo','HP','Asus','Total Equipos'],...rows],'Combinatorias_Marcas');
 }
 function xOCDist(n){
   const data=getOCData().filter(s=>s.n_oc===n);
