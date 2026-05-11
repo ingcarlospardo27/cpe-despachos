@@ -444,6 +444,7 @@ function getLAB(){if(!LAB)LAB=_LAB.map(dlab);return LAB;}
 // ── HELPERS ───────────────────────────────────────────
 const gv=id=>{const e=document.getElementById(id);return e?e.value||'':''};
 const sumT=arr=>arr.reduce((a,r)=>a+(r.t||0),0);
+const uniqDane=arr=>new Set(arr.map(r=>r.dane)).size;
 const pct=(a,b)=>b>0?Math.round(a/b*100):0;
 const pct1=(a,b)=>b>0?Math.round(a/b*1000)/10:0;
 const N=n=>(n||0).toLocaleString('es-CO');
@@ -861,7 +862,7 @@ function drawRes(){
       daneBox.style.display='none';
     }
   }
-  set('r-eq-mc',kpi('Sedes beneficiadas',N(data.length),'instituciones','',null,null,'')+kpi('Equipos despachados',N(tot),'unidades','',null,null,'')+kpi('Entregados',N(ent),pct(ent,tot)+'% del total','gr',ent,tot,'#1E8A3E')+kpi('En distribución',N(dis),pct(dis,tot)+'% del total','am',dis,tot,'#D97706'));
+  set('r-eq-mc',kpi('Sedes beneficiadas',N(uniqDane(data)),'instituciones (DANE único)','',null,null,'')+kpi('Equipos despachados',N(tot),'unidades','',null,null,'')+kpi('Entregados',N(ent),pct(ent,tot)+'% del total','gr',ent,tot,'#1E8A3E')+kpi('En distribución',N(dis),pct(dis,tot)+'% del total','am',dis,tot,'#D97706'));
   set('r-eq-est',sbox(N(ent),pct(ent,tot)+'%','Entregados','#DCFCE7','#15803D')+sbox(N(dis),pct(dis,tot)+'%','En distribución','#DBEAFE','#1D4ED8'));
   set('r-eq-sd',sbox(N(sed),pct(sed,tot)+'%','Sede','#F0F9FF','#0369A1')+sbox(N(dir),pct(dir,tot)+'%','Directa','#FEF9C3','#854D0E'));
   set('r-eq-tr',sbox(N(spn),pct(spn,tot)+'%','SPN','#DBEAFE','#1D4ED8')+sbox(N(op),pct(op,tot)+'%','Op. Logístico','#FEF3C7','#92400E'));
@@ -895,7 +896,7 @@ function drawResLab(){
 function drawEq(){pages.e=0;const data=fEqTab();eqF=data;
   const tot=sumT(data),ent=sumT(data.filter(r=>r.e===1)),dis=sumT(data.filter(r=>r.e===0));
   const rur=sumT(data.filter(r=>r.u==='R')),urb=sumT(data.filter(r=>r.u==='U'));
-  set('e-mc',kpi('Sedes',N(data.length),'instituciones','',null,null,'')+kpi('Equipos',N(tot),'total','',null,null,'')+kpi('Entregados',N(ent),pct(ent,tot)+'%','gr',ent,tot,'#1E8A3E')+kpi('En distribución',N(dis),pct(dis,tot)+'%','am',dis,tot,'#D97706')+kpi('Rural',N(rur),pct(rur,tot)+'%','te')+kpi('Urbano',N(urb),pct(urb,tot)+'%','pu'));
+  set('e-mc',kpi('Sedes',N(uniqDane(data)),'instituciones (DANE único)','',null,null,'')+kpi('Equipos',N(tot),'total','',null,null,'')+kpi('Entregados',N(ent),pct(ent,tot)+'%','gr',ent,tot,'#1E8A3E')+kpi('En distribución',N(dis),pct(dis,tot)+'%','am',dis,tot,'#D97706')+kpi('Rural',N(rur),pct(rur,tot)+'%','te')+kpi('Urbano',N(urb),pct(urb,tot)+'%','pu'));
   drawDepMunTbl('e-dep-t',data,'d');drawDepMunTbl('e-mun-t',data,'m');
   if(eqViewMode===2)drawDetTbl('e',data);
 }
@@ -907,7 +908,8 @@ function drawLab(){pages.l=0;const data=fLabTab();labF=data;
   if(labViewMode===2)drawDetTbl('l',data);
 }
 function drawDepMunTbl(id,data,grp){
-  const map={};data.forEach(r=>{const k=r[grp];if(!map[k])map[k]={n:k,s:0,eq:0,ent:0};map[k].s++;map[k].eq+=r.t||0;if(r.e===1)map[k].ent+=r.t||0;});
+  const map={};data.forEach(r=>{const k=r[grp];if(!map[k])map[k]={n:k,danes:new Set(),eq:0,ent:0};map[k].danes.add(r.dane);map[k].eq+=r.t||0;if(r.e===1)map[k].ent+=r.t||0;});
+  Object.values(map).forEach(v=>v.s=v.danes.size);
   const rows=Object.values(map).sort((a,b)=>b.eq-a.eq).slice(0,30);
   const max=rows[0]?rows[0].eq:1;
   const lbl=grp==='d'?'Departamento':'Municipio';
